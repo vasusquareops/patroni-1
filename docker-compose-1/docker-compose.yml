@@ -1,0 +1,45 @@
+# docker compose file for running a 3-node PostgreSQL cluster
+# with 3-node etcd cluster as the DCS and one haproxy node
+version: "2"
+
+# networks:
+#     demo:
+
+services:
+    etcd1: &etcd
+        image: patroni
+        # networks: [ demo ]
+        environment:
+            ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+            ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+            ETCD_INITIAL_CLUSTER: etcd1=http://172.31.47.107:2380,etcd2=http://172.31.42.16:2380,etcd3=http://172.31.32.145:2380
+            ETCD_INITIAL_CLUSTER_STATE: new
+            ETCD_INITIAL_CLUSTER_TOKEN: tutorial
+        container_name: etcd1
+        hostname: etcd1
+        command: etcd -name etcd1 -initial-advertise-peer-urls http://172.31.47.107:2380
+
+    haproxy1:
+        image: patroni
+        # networks: [ demo ]
+        env_file: docker/patroni.env
+        hostname: haproxy
+        container_name: haproxy1
+        ports:
+            - "5000:5000"
+            - "5001:5001"
+        command: haproxy
+        environment: &haproxy_env
+            ETCDCTL_ENDPOINTS: http://172.31.47.107:2379,http://172.31.42.16:2379,http://172.31.32.145:2379
+            PATRONI_ETCD3_HOSTS: "'172.31.47.107:2379','172.31.42.16:2379','172.31.32.145:2379'"
+            PATRONI_SCOPE: demo
+
+    patroni1:
+        image: patroni
+        # networks: [ demo ]
+        env_file: docker/patroni.env
+        hostname: patroni1
+        container_name: patroni1
+        environment:
+            <<: *haproxy_env
+            PATRONI_NAME: patroni1
