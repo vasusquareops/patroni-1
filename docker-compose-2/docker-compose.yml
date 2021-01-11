@@ -16,8 +16,11 @@ services:
             ETCD_INITIAL_CLUSTER_STATE: new
             ETCD_INITIAL_CLUSTER_TOKEN: tutorial
         container_name: etcd2
+        ports:
+            - "2379:2379"
+            - "2380:2380"
         hostname: etcd2
-        command: etcd -name etcd1 -initial-advertise-peer-urls http://172.31.38.74:2380 -advertise-client-urls http://172.31.38.74:2379
+        command: etcd -name etcd2 -initial-advertise-peer-urls http://172.31.38.74:2380 #-advertise-client-urls http://172.31.38.74:2379
 
     haproxy2:
         image: patroni
