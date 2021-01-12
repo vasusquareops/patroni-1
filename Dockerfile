@@ -1,8 +1,8 @@
 ## This Dockerfile is meant to aid in the building and debugging patroni whilst developing on your local machine
 ## It has all the necessary components to play/debug with a single node appliance, running etcd
-ARG PG_MAJOR=10
+ARG PG_MAJOR=12
 ARG COMPRESS=false
-ARG PGHOME=/home/postgres
+ARG PGHOME=/var/lib/postgresql
 ARG PGDATA=$PGHOME/data
 ARG LC_ALL=C.UTF-8
 ARG LANG=C.UTF-8
@@ -48,6 +48,7 @@ RUN set -ex \
     && ln -s /patronictl.py /usr/local/bin/patronictl \
     && sed -i "s|/var/lib/postgresql.*|$PGHOME:/bin/bash|" /etc/passwd \
     && chown -R postgres:postgres /var/log \
+    && chmod 750 $PGDATA \
 \
     # Download etcd
     && curl -sL https://github.com/coreos/etcd/releases/download/v${ETCDVERSION}/etcd-v${ETCDVERSION}-linux-amd64.tar.gz \
@@ -151,6 +152,7 @@ RUN sed -i 's/env python/&3/' /patroni*.py \
     && sed -i 's/^      parameters:/      pg_hba:\n      - local all all trust\n      - host replication all all md5\n      - host all all all md5\n&\n        max_connections: 100/'  postgres?.yml \
     && if [ "$COMPRESS" = "true" ]; then chmod u+s /usr/bin/sudo; fi \
     && chmod +s /bin/ping \
+    && chmod 750 $PGDATA \
     && chown -R postgres:postgres $PGHOME /run /etc/haproxy
 
 USER postgres
