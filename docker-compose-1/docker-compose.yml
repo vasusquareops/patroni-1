@@ -12,15 +12,16 @@ services:
         environment:
             ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
             ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
-            ETCD_INITIAL_CLUSTER: etcd1=http://172.31.37.68:2380,etcd2=http://172.31.38.74:2380,etcd3=http://172.31.39.75:2380
+            ETCD_INITIAL_CLUSTER: etcd1=http://${IP_NODE_1}:2380,etcd2=http://${IP_NODE_2}:2380,etcd3=http://${IP_NODE_3}:2380
             ETCD_INITIAL_CLUSTER_STATE: new
             ETCD_INITIAL_CLUSTER_TOKEN: tutorial
+            DOCKER_IP: ${IP_NODE_1}
         container_name: etcd1
         ports:
             - "2379:2379"
             - "2380:2380"
         hostname: etcd1
-        command: etcd -name etcd1 -initial-advertise-peer-urls http://172.31.37.68:2380 #-advertise-client-urls http://172.31.37.68:2379
+        command: etcd -name etcd1 -initial-advertise-peer-urls http://${IP_NODE_1}:2380
 
     haproxy1:
         image: patroni
@@ -31,11 +32,13 @@ services:
         ports:
             - "5000:5000"
             - "5001:5001"
+            - "7000:7000"
         command: haproxy
         environment: &haproxy_env
-            ETCDCTL_ENDPOINTS: http://172.31.37.68:2379,http://172.31.38.74:2379,http://172.31.39.75:2379
-            PATRONI_ETCD3_HOSTS: "'172.31.37.68:2379','172.31.38.74:2379','172.31.39.75:2379'"
+            ETCDCTL_ENDPOINTS: http://${IP_NODE_1}:2379,http://${IP_NODE_2}:2379,http://${IP_NODE_3}:2379
+            PATRONI_ETCD3_HOSTS: "'${IP_NODE_1}:2379','${IP_NODE_2}:2379','${IP_NODE_3}:2379'"
             PATRONI_SCOPE: demo
+            DOCKER_IP: ${IP_NODE_1}
 
     patroni1:
         image: patroni
@@ -51,4 +54,4 @@ services:
         environment:
             <<: *haproxy_env
             PATRONI_NAME: patroni1
-            DOCKER_IP: 172.31.37.68
+            
