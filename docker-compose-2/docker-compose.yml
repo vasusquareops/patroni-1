@@ -54,3 +54,11 @@ services:
         environment:
             <<: *haproxy_env
             PATRONI_NAME: patroni2
+
+    adminer:
+        image: adminer
+        restart: always
+        links:
+        - 'patroni2:db'
+        ports:
+        - '10080:8080'
