@@ -1,31 +1,26 @@
 # docker compose file for running a 3-node PostgreSQL cluster
 # with 3-node etcd cluster as the DCS and one haproxy node
-version: "2"
-
-# networks:
-#     demo:
+version: '3.7'
 
 services:
     etcd2:
         image: patroni
-        # networks: [ demo ]
         environment:
             ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
             ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
             ETCD_INITIAL_CLUSTER: etcd1=http://${IP_NODE_1}:2380,etcd2=http://${IP_NODE_2}:2380,etcd3=http://${IP_NODE_3}:2380
             ETCD_INITIAL_CLUSTER_STATE: new
-            ETCD_INITIAL_CLUSTER_TOKEN: tutorial
-            PATRONI_NAME: patroni2
+            ETCD_INITIAL_CLUSTER_TOKEN: ha
+            DOCKER_IP: ${IP_NODE_2}
         container_name: etcd2
         ports:
             - "2379:2379"
             - "2380:2380"
         hostname: etcd2
-        command: etcd -name etcd2 -initial-advertise-peer-urls http://${IP_NODE_2}:2380 #-advertise-client-urls http://172.31.38.74:2379
+        command: etcd -name etcd2 -initial-advertise-peer-urls http://${IP_NODE_2}:2380
 
     haproxy2:
         image: patroni
-        # networks: [ demo ]
         env_file: docker/patroni.env
         hostname: haproxy2
         container_name: haproxy2
@@ -37,15 +32,18 @@ services:
         environment: &haproxy_env
             ETCDCTL_ENDPOINTS: http://${IP_NODE_1}:2379,http://${IP_NODE_2}:2379,http://${IP_NODE_3}:2379
             PATRONI_ETCD3_HOSTS: "'${IP_NODE_1}:2379','${IP_NODE_2}:2379','${IP_NODE_3}:2379'"
-            PATRONI_SCOPE: demo
-            PATRONI_NAME: patroni2
+            PATRONI_SCOPE: ha
+            DOCKER_IP: ${IP_NODE_2}
 
     patroni2:
         image: patroni
-        # networks: [ demo ]
         env_file: docker/patroni.env
         hostname: patroni2
         container_name: patroni2
+        volumes:
+            - type: volume
+              source: data
+              target: /var/lib/postgresql/data
         ports:
             - "5432:5432"
             - "5433:5433"
@@ -54,6 +52,7 @@ services:
         environment:
             <<: *haproxy_env
             PATRONI_NAME: patroni2
+            DOCKER_IP: ${IP_NODE_2}
 
     adminer:
         image: adminer
@@ -62,3 +61,6 @@ services:
         - 'patroni2:db'
         ports:
         - '10080:8080'
+
+volumes:
+    data:

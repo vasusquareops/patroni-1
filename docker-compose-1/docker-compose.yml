@@ -1,20 +1,16 @@
 # docker compose file for running a 3-node PostgreSQL cluster
 # with 3-node etcd cluster as the DCS and one haproxy node
-version: "2"
-
-# networks:
-#     demo:
+version: '3.7'
 
 services:
     etcd1: &etcd
         image: patroni
-        # networks: [ demo ]
         environment:
             ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
             ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
             ETCD_INITIAL_CLUSTER: etcd1=http://${IP_NODE_1}:2380,etcd2=http://${IP_NODE_2}:2380,etcd3=http://${IP_NODE_3}:2380
             ETCD_INITIAL_CLUSTER_STATE: new
-            ETCD_INITIAL_CLUSTER_TOKEN: tutorial
+            ETCD_INITIAL_CLUSTER_TOKEN: ha
             DOCKER_IP: ${IP_NODE_1}
         container_name: etcd1
         ports:
@@ -25,7 +21,6 @@ services:
 
     haproxy1:
         image: patroni
-        # networks: [ demo ]
         env_file: docker/patroni.env
         hostname: haproxy1
         container_name: haproxy1
@@ -37,15 +32,18 @@ services:
         environment: &haproxy_env
             ETCDCTL_ENDPOINTS: http://${IP_NODE_1}:2379,http://${IP_NODE_2}:2379,http://${IP_NODE_3}:2379
             PATRONI_ETCD3_HOSTS: "'${IP_NODE_1}:2379','${IP_NODE_2}:2379','${IP_NODE_3}:2379'"
-            PATRONI_SCOPE: demo
+            PATRONI_SCOPE: ha
             DOCKER_IP: ${IP_NODE_1}
 
     patroni1:
         image: patroni
-        # networks: [ demo ]
         env_file: docker/patroni.env
         hostname: patroni1
         container_name: patroni1
+        volumes:
+            - type: volume
+              source: data 
+              target: /var/lib/postgresql/data
         ports:
             - "5432:5432"
             - "5433:5433"
@@ -54,7 +52,7 @@ services:
         environment:
             <<: *haproxy_env
             PATRONI_NAME: patroni1
-            
+
     adminer:
         image: adminer
         restart: always
@@ -62,3 +60,6 @@ services:
         - 'patroni1:db'
         ports:
         - '10080:8080'
+
+volumes:
+    data:
